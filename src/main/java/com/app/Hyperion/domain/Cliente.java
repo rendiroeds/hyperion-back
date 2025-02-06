@@ -1,5 +1,6 @@
 package com.app.Hyperion.domain;
 
+import com.app.Hyperion.requests.CreateClienteJsonRequest;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -68,5 +69,14 @@ public class Cliente {
     private List<Actividad> actividades;
 
     public Cliente() {
+    }
+
+    public Cliente(CreateClienteJsonRequest request) {
+        this.nombre = request.getNombre();
+        this.apellido = request.getApellido();
+        this.cuit = request.getCuit();
+        this.direccion = request.getDireccion();
+        this.whatsapp = request.getWhatsapp();
+        this.email = request.getEmail();
     }
 }
