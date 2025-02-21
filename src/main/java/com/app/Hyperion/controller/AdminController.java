@@ -2,8 +2,11 @@ package com.app.Hyperion.controller;
 
 import com.app.Hyperion.domain.Cliente;
 import com.app.Hyperion.domain.TipoContribuyente;
+import com.app.Hyperion.domain.Usuario;
 import com.app.Hyperion.requests.CreateClienteJsonRequest;
+import com.app.Hyperion.responses.UsuarioResponse;
 import com.app.Hyperion.service.ClienteService;
+import com.app.Hyperion.service.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +19,9 @@ public class AdminController {
 
     @Autowired
     private ClienteService clienteService;
+
+    @Autowired
+    private UsuarioService usuarioService;
 
     // Crear cliente
     @PostMapping("/clientes")
@@ -56,5 +62,23 @@ public class AdminController {
     public ResponseEntity<List<TipoContribuyente>> getTipoContribuyentes() {
         List<TipoContribuyente> contribuyentes = clienteService.getTipoContribuyentes();
         return ResponseEntity.ok(contribuyentes);
+    }
+
+    @GetMapping("/usuarios")
+    public ResponseEntity<List<UsuarioResponse>> getUsuarios() {
+        List<UsuarioResponse> usuarios = usuarioService.getUsuarios();
+        return ResponseEntity.ok(usuarios);
+    }
+
+    @PostMapping("/usuario")
+    public ResponseEntity createUsuario(@RequestBody UsuarioResponse usuario) {
+        Usuario usuario1 = this.usuarioService.saveUsuario(usuario);
+        return ResponseEntity.ok(usuario1);
+    }
+
+    @PutMapping("/usuario")
+    public ResponseEntity<Usuario> updateUsuario(@RequestBody UsuarioResponse usuario) {
+        Usuario usuario1 = this.usuarioService.saveUsuario(usuario);
+        return ResponseEntity.ok(usuario1);
     }
 }
