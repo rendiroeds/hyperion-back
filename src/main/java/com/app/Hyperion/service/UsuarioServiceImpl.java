@@ -5,6 +5,7 @@ import com.app.Hyperion.domain.Usuario;
 import com.app.Hyperion.requests.LoginJsonRequest;
 import com.app.Hyperion.requests.RegisterJsonRequest;
 import com.app.Hyperion.responses.JwtResponse;
+import com.app.Hyperion.responses.UsuarioResponse;
 import com.app.Hyperion.utils.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -12,6 +13,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -55,5 +58,41 @@ public class UsuarioServiceImpl implements UsuarioService{
                 .build();
 
         usuarioRepository.save(user);
+    }
+
+    @Override
+    public List<UsuarioResponse> getUsuarios() {
+        List<UsuarioResponse> usuarioResponses = new ArrayList<>();
+        for (Usuario usuario : this.usuarioRepository.findAll()) {
+            UsuarioResponse usuarioResponse = new UsuarioResponse();
+            usuarioResponse.setId(usuario.getUsuarioId());
+            usuarioResponse.setFirstName(usuario.getFirstName());
+            usuarioResponse.setLastName(usuario.getLastName());
+            usuarioResponse.setEmail(usuario.getEmail());
+            usuarioResponse.setRol(usuario.getRol());
+            usuarioResponses.add(usuarioResponse);
+            usuarioResponse.setUsername(usuario.getUsername());
+        }
+        return usuarioResponses;
+    }
+
+    @Override
+    public Usuario saveUsuario(UsuarioResponse usuarioResponse) {
+        if(usuarioResponse.getId() == null) {
+            Usuario usuario = new Usuario();
+            usuario.setFirstName(usuarioResponse.getFirstName());
+            usuario.setLastName(usuarioResponse.getLastName());
+            usuario.setUsername(usuarioResponse.getUsername());
+            usuario.setEmail(usuarioResponse.getEmail());
+            usuario.setRol(usuarioResponse.getRol());
+            return this.usuarioRepository.save(usuario);
+        } else {
+            Usuario usuario = this.usuarioRepository.findById(usuarioResponse.getId()).orElseThrow();
+            usuario.setFirstName(usuarioResponse.getFirstName());
+            usuario.setLastName(usuarioResponse.getLastName());
+            usuario.setEmail(usuarioResponse.getEmail());
+            return this.usuarioRepository.save(usuario);
+        }
+
     }
 }
