@@ -1,6 +1,7 @@
 package com.app.Hyperion.config;
 
 import com.app.Hyperion.dao.UsuarioRepository;
+import net.sourceforge.tess4j.Tesseract;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -47,4 +48,10 @@ public class ApplicationConfig {
                 .orElseThrow(()-> new UsernameNotFoundException("User not found"));
     }
 
+    @Bean
+    Tesseract tesseract() {
+        Tesseract tesseract = new Tesseract();
+        tesseract.setDatapath("");
+        return tesseract;
+    }
 }
