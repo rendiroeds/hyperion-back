@@ -48,6 +48,7 @@ public class SecurityConfig {
                         authRequest
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ✅ Permitir preflight CORS
                                 .requestMatchers("/auth/**").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/images/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/admin/**").authenticated()
                                 .requestMatchers(HttpMethod.POST, "/admin/**").authenticated()
                                 .anyRequest().authenticated()

@@ -43,11 +43,29 @@ public class PDFReader {
 
         double totalRetenciones = totalDeduccionesIVA + totalOtrasRetenciones;
 
+        // Crear un directorio temporal para nombres de archivos determinísticos
+        File tempDir = Files.createTempDirectory("LIBRO_IVA_DIGITAL_").toFile();
+
         List<File> outputFiles = new ArrayList<>();
-        outputFiles.add(writeToFile("LIBRO_IVA_DIGITAL_VENTAS_CBTE", generateIVAVentas(fecha, coe, cuitComprador, razonSocialComprador, operacionConIVA, subtotalOperacion)));
-        outputFiles.add(writeToFile("LIBRO_IVA_DIGITAL_COMPRAS_CBTE", generateIVACompras(fecha, coe, cuitComprador, razonSocialComprador, totalRetenciones, totalOtrasRetenciones)));
-        for (Map.Entry<Double, Double> entry : deduccionesIVA.entrySet()) {
-            outputFiles.add(writeToFile("LIBRO_IVA_DIGITAL_COMPRAS_ALICUOTAS", generateIVAComprasAlicuotas(fecha, coe, cuitComprador, entry.getKey(), entry.getValue())));
+
+        // Ventas CBTE (1 línea)
+        StringBuilder ventas = generateIVAVentas(fecha, coe, cuitComprador, razonSocialComprador, operacionConIVA, subtotalOperacion);
+        ventas.append("\r\n");
+        outputFiles.add(writeToFile(tempDir, "LIBRO_IVA_DIGITAL_VENTAS_CBTE.txt", ventas));
+
+        // Compras CBTE (1 línea)
+        StringBuilder compras = generateIVACompras(fecha, coe, cuitComprador, razonSocialComprador, totalRetenciones, totalOtrasRetenciones);
+        compras.append("\r\n");
+        outputFiles.add(writeToFile(tempDir, "LIBRO_IVA_DIGITAL_COMPRAS_CBTE.txt", compras));
+
+        // Compras Alicuotas (N líneas en UN solo archivo)
+        if (!deduccionesIVA.isEmpty()) {
+            StringBuilder alicuotas = new StringBuilder();
+            for (Map.Entry<Double, Double> entry : deduccionesIVA.entrySet()) {
+                StringBuilder linea = generateIVAComprasAlicuotas(fecha, coe, cuitComprador, entry.getKey(), entry.getValue());
+                alicuotas.append(linea).append("\r\n");
+            }
+            outputFiles.add(writeToFile(tempDir, "LIBRO_IVA_DIGITAL_COMPRAS_ALICUOTAS.txt", alicuotas));
         }
 
         return createZipFile(outputFiles);
@@ -68,8 +86,11 @@ public class PDFReader {
         return zipFile;
     }
 
-    private static File writeToFile(String fileName, StringBuilder content) throws IOException {
-        File file = File.createTempFile(fileName, ".txt");
+    private static File writeToFile(File directory, String desiredFileName, StringBuilder content) throws IOException {
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new IOException("No se pudo crear el directorio temporal para salida TXT");
+        }
+        File file = new File(directory, desiredFileName);
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "Windows-1252"))) {
             writer.write(content.toString());
         }
@@ -86,19 +107,19 @@ public class PDFReader {
                 .append(String.format("%-2s", "80"))
                 .append(String.format("%-20s", cuit))
                 .append(String.format("%-30s", razonSocial))
-                .append(String.format("%-15s", String.format("%013.2f", operacionConIVA).replace(".", "")))
-                .append(String.format("%-15s", String.format("%013.2f", subtotal).replace(".", "")))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
+                .append(formatAmount(operacionConIVA))
+                .append(formatAmount(subtotal))
+                .append("000000000000000")
+                .append("000000000000000")
+                .append("000000000000000")
+                .append("000000000000000")
+                .append("000000000000000")
+                .append("000000000000000")
                 .append(String.format("%-3s", "PES"))
                 .append(String.format("%-10s", "0000000001"))
                 .append(String.format("%-1s", "1"))
                 .append(String.format("%-1s", " "))
-                .append(String.format("%-15s", "000000000000000"))
+                .append("000000000000000")
                 .append(String.format("%-8s", fecha));
     }
 
@@ -112,14 +133,14 @@ public class PDFReader {
                 .append(String.format("%-2s", "80"))
                 .append(String.format("%-20s", cuit))
                 .append(String.format("%-30s", razonSocial))
-                .append(String.format("%-15s", String.format("%013.2f", totalRetenciones).replace(".", "")))
-                .append(String.format("%-15s", String.format("%013.2f", totalOtrasRetenciones).replace(".", "")))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
-                .append(String.format("%-15s", "000000000000000"))
+                .append(formatAmount(totalRetenciones))
+                .append(formatAmount(totalOtrasRetenciones))
+                .append("000000000000000")
+                .append("000000000000000")
+                .append("000000000000000")
+                .append("000000000000000")
+                .append("000000000000000")
+                .append("000000000000000")
                 .append(String.format("%-3s", "PES"))
                 .append(String.format("%-10s", "0000000001"))
                 .append(String.format("%-1s", "1"))
@@ -132,16 +153,21 @@ public class PDFReader {
     }
 
     private static StringBuilder generateIVAComprasAlicuotas(String fecha, String coe, String cuit, double baseCalculo, double alicuota) {
-        double impuesto = (baseCalculo*alicuota)/100;
+        double impuesto = (baseCalculo * alicuota) / 100.0;
         return new StringBuilder()
                 .append(String.format("%-3s", "033"))
                 .append(String.format("%-5s", "00000"))
                 .append(String.format("%-20s", coe))
                 .append(String.format("%-2s", "80"))
                 .append(String.format("%-20s", cuit))
-                .append(String.format("%-15s", String.format("%013.2f", baseCalculo).replace(".", "")))
+                .append(formatAmount(baseCalculo))
                 .append(String.format("%-4s", getAlicuotaCode(alicuota)))
-                .append(String.format("%-15s", String.format("%013.2f", impuesto).replace(".", "")));
+                .append(formatAmount(impuesto));
+    }
+
+    private static String formatAmount(double amount) {
+        long cents = Math.round(amount * 100.0);
+        return String.format("%015d", cents);
     }
 
     private static String getAlicuotaCode(double porcentaje) {
@@ -217,11 +243,11 @@ public class PDFReader {
                         // Extraer valores de las filas después de encontrar los encabezados
                         if (insideDeduccionesTable && headersFound && row.size() > Math.max(baseCalculoIndex, alicuotaIndex)) {
                             try {
-                                String baseCalculoStr = row.get(baseCalculoIndex).getText().replace("$", "").replace(",", "").trim();
+                                String baseCalculoStr = row.get(baseCalculoIndex).getText().trim();
                                 String alicuotaStr = row.get(alicuotaIndex).getText().replace("%", "").replace(",", ".").trim();
 
                                 if (!baseCalculoStr.isEmpty() && !alicuotaStr.isEmpty()) {
-                                    double baseCalculo = Double.parseDouble(baseCalculoStr);
+                                    double baseCalculo = parseAmountValue(baseCalculoStr);
                                     double alicuota = Double.parseDouble(alicuotaStr);
 
                                     if (alicuota > 0) {
@@ -237,6 +263,30 @@ public class PDFReader {
             }
         }
         return deducciones;
+    }
+
+    private static double parseAmountValue(String value) {
+        // Normaliza distintos formatos: "$ 1.234,56" o "1,234.56" o "1.234,56" o "1234,56"
+        String cleaned = value
+                .replace("$", "")
+                .replace(" ", "")
+                .trim();
+
+        // Si contiene coma y punto, asumimos que el separador decimal es la coma cuando está al final
+        if (cleaned.matches(".*\\.\\d{3,}.*") && cleaned.matches(".*\\,\\d{1,2}$")) {
+            cleaned = cleaned.replace(".", "").replace(",", ".");
+        } else if (cleaned.contains(".")) {
+            // Si hay puntos y no hay coma al final, quitar separadores de miles y dejar posible decimal
+            // Casos: "1.234" (miles) o "1234.56" (decimal con punto)
+            if (cleaned.matches(".*\\.\\d{3}$")) {
+                cleaned = cleaned.replace(".", "");
+            }
+        } else if (cleaned.contains(",")) {
+            // Si solo hay coma, tomarla como decimal
+            cleaned = cleaned.replace(".", "").replace(",", ".");
+        }
+
+        return Double.parseDouble(cleaned);
     }
 
 
@@ -294,10 +344,10 @@ public class PDFReader {
                         if (insideDeduccionesTable && headersFound && row.size() > Math.max(baseCalculoIndex, conceptoIndex)) {
                             try {
                                 String conceptoStr = row.get(conceptoIndex).getText().toLowerCase();
-                                String baseCalculoStr = row.get(baseCalculoIndex).getText().replace("$", "").replace(",", "").trim();
+                                String baseCalculoStr = row.get(baseCalculoIndex).getText().trim();
 
                                 if (conceptoStr.contains("otras deducciones") && !baseCalculoStr.isEmpty()) {
-                                    totalRetenciones += Double.parseDouble(baseCalculoStr);
+                                    totalRetenciones += parseAmountValue(baseCalculoStr);
                                 }
                             } catch (NumberFormatException e) {
                                 System.out.println("No se pudo convertir la fila: " + row);
@@ -364,14 +414,14 @@ public class PDFReader {
                                 if (subtotalIndex != -1) {
                                     String subtotalStr = row.get(subtotalIndex).getText().replace("$", "").replace(",", "").trim();
                                     if (!subtotalStr.isEmpty()) {
-                                        valoresOperacion.put("Subtotal", Double.parseDouble(subtotalStr));
+                                        valoresOperacion.put("Subtotal", parseAmountValue(subtotalStr));
                                     }
                                 }
 
                                 if (operacionConIVAIndex != -1) {
                                     String operacionConIVAStr = row.get(operacionConIVAIndex).getText().replace("$", "").replace(",", "").trim();
                                     if (!operacionConIVAStr.isEmpty()) {
-                                        valoresOperacion.put("OperacionConIVA", Double.parseDouble(operacionConIVAStr));
+                                        valoresOperacion.put("OperacionConIVA", parseAmountValue(operacionConIVAStr));
                                     }
                                 }
                             } catch (NumberFormatException e) {
